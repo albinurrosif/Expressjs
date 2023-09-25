@@ -7,6 +7,10 @@ const port = 3000; // membuat variabel dengan nama port yang isinya 3000
 //   res.send('halo dek');
 // });
 
+const bodyPs = require('body-parser');
+app.use(bodyPs.urlencoded({ extended: false }));
+app.use(bodyPs.json());
+
 //import route post
 const mhsRouter = require('./routes/mahasiswa');
 app.use('/api/mhs', mhsRouter);
