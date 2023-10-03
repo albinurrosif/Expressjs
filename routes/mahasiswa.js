@@ -6,7 +6,7 @@ const connection = require('../config/db');
 const { body, validationResult } = require('express-validator');
 
 router.get('/', function (req, res) {
-  connection.query('select * from mahasiswa order by id_m desc', function (err, rows) {
+  connection.query('select a.nama, b.nama_jurusan as jurusan ' + ' from mahasiswa a join jurusan b ' + ' on b.id_j=a.id_jurusan order by a.id_m desc ', function (err, rows) {
     if (err) {
       return res.status(500).json({
         status: false,
