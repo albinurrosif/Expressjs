@@ -1,9 +1,61 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 
 //import database
 const connection = require('../config/db');
 const { body, validationResult } = require('express-validator');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'public/images');
+  },
+  filename: (req, file, cb) => {
+    console.log(file);
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage: storage });
+
+router.post(
+  '/store',
+  upload.single('gambar'),
+  [
+    //validation
+    body('nama').notEmpty(),
+    body('nrp').notEmpty(),
+    body('id_jurusan').notEmpty(),
+  ],
+  (req, res) => {
+    const error = validationResult(req);
+    if (!error.isEmpty()) {
+      return res.status(422).json({
+        error: error.array(),
+      });
+    }
+    let Data = {
+      nama: req.body.nama,
+      nrp: req.body.nrp,
+      id_jurusan: req.body.id_jurusan,
+      gambar: req.file.filename,
+    };
+    connection.query('insert into mahasiswa set ?', Data, function (err, rows) {
+      if (err) {
+        return res.status(500).json({
+          status: false,
+          message: 'Server Error',
+        });
+      } else {
+        return res.status(201).json({
+          status: true,
+          message: 'Success..!',
+          data: rows[0],
+        });
+      }
+    });
+  }
+);
 
 router.get('/', function (req, res) {
   connection.query('select a.nama, b.nama_jurusan as jurusan ' + ' from mahasiswa a join jurusan b ' + ' on b.id_j=a.id_jurusan order by a.id_m desc ', function (err, rows) {
