@@ -190,8 +190,8 @@ router.patch(
     }
     let id = req.params.id;
     // Lakukan pengecekan apakah ada file yang diunggah
-    let gambar = req.file ? req.file.filename : null;
-
+    let gambar = req.files['gambar'] ? req.files['gambar'][0].filename : null;
+    let swa_foto = req.files['swa_foto'] ? req.files['swa_foto'][0].filename : null;
     connection.query(`select * from mahasiswa where id_m = ${id}`, function (err, rows) {
       if (err) {
         return res.status(500).json({
@@ -205,12 +205,17 @@ router.patch(
           message: 'Not Found',
         });
       }
-      const namaFileLama = rows[0].gambar;
+      const gambarLama = rows[0].gambar;
+      const swa_fotoLama = rows[0].swa_foto;
 
       // Hapus file lama jika ada
-      if (namaFileLama && gambar) {
-        const pathFileLama = path.join(__dirname, '../public/images', namaFileLama);
-        fs.unlinkSync(pathFileLama);
+      if (gambarLama && gambar) {
+        const pathGambar = path.join(__dirname, '../public/images', gambarLama);
+        fs.unlinkSync(pathGambar);
+      }
+      if (swa_fotoLama && swa_foto) {
+        const pathSwaFoto = path.join(__dirname, '../public/images', swa_fotoLama);
+        fs.unlinkSync(pathSwaFoto);
       }
 
       let Data = {
@@ -218,6 +223,7 @@ router.patch(
         nrp: req.body.nrp,
         id_jurusan: req.body.id_jurusan,
         gambar: gambar,
+        swa_foto: swa_foto,
       };
       connection.query(`update mahasiswa set ? where id_m = ${id}`, Data, function (err, rows) {
         if (err) {
