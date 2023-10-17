@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
 });
 const fileFilter = (req, file, cb) => {
   // Mengecek jenis file yang diizinkan (misalnya, hanya gambar JPEG atau PNG)
-  if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
+  if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png' || file.mimetype === 'application/pdf') {
     cb(null, true); // Izinkan file
   } else {
     cb(new Error('Jenis file tidak diizinkan'), false); // Tolak file
@@ -30,7 +30,10 @@ const upload = multer({ storage: storage, fileFilter: fileFilter });
 
 router.post(
   '/store',
-  upload.single('gambar'),
+  upload.fields([
+    { name: 'gambar', maxCount: 1 },
+    { name: 'swa_foto', maxCount: 1 },
+  ]),
   [
     //validation
     body('nama').notEmpty(),
@@ -48,7 +51,8 @@ router.post(
       nama: req.body.nama,
       nrp: req.body.nrp,
       id_jurusan: req.body.id_jurusan,
-      gambar: req.file.filename,
+      gambar: req.files.gambar[0].filename,
+      swa_foto: req.files.swa_foto[0].filename,
     };
     connection.query('insert into mahasiswa set ?', Data, function (err, rows) {
       if (err) {
@@ -170,59 +174,67 @@ router.get('/(:id)', function (req, res) {
 //   });
 // });
 
-router.patch('/update/:id', upload.single('gambar'), [body('nama').notEmpty(), body('nrp').notEmpty(), body('id_jurusan').notEmpty()], (req, res) => {
-  const error = validationResult(req);
-  if (!error.isEmpty()) {
-    return res.status(422).json({
-      error: error.array(),
-    });
-  }
-  let id = req.params.id;
-  // Lakukan pengecekan apakah ada file yang diunggah
-  let gambar = req.file ? req.file.filename : null;
-
-  connection.query(`select * from mahasiswa where id_m = ${id}`, function (err, rows) {
-    if (err) {
-      return res.status(500).json({
-        status: false,
-        message: 'Server Error',
+router.patch(
+  '/update/:id',
+  upload.fields([
+    { name: 'gambar', maxCount: 1 },
+    { name: 'swa_foto', maxCount: 1 },
+  ]),
+  [body('nama').notEmpty(), body('nrp').notEmpty(), body('id_jurusan').notEmpty()],
+  (req, res) => {
+    const error = validationResult(req);
+    if (!error.isEmpty()) {
+      return res.status(422).json({
+        error: error.array(),
       });
     }
-    if (rows.length === 0) {
-      return res.status(404).json({
-        status: false,
-        message: 'Not Found',
-      });
-    }
-    const namaFileLama = rows[0].gambar;
+    let id = req.params.id;
+    // Lakukan pengecekan apakah ada file yang diunggah
+    let gambar = req.file ? req.file.filename : null;
 
-    // Hapus file lama jika ada
-    if (namaFileLama && gambar) {
-      const pathFileLama = path.join(__dirname, '../public/images', namaFileLama);
-      fs.unlinkSync(pathFileLama);
-    }
-
-    let Data = {
-      nama: req.body.nama,
-      nrp: req.body.nrp,
-      id_jurusan: req.body.id_jurusan,
-      gambar: gambar,
-    };
-    connection.query(`update mahasiswa set ? where id_m = ${id}`, Data, function (err, rows) {
+    connection.query(`select * from mahasiswa where id_m = ${id}`, function (err, rows) {
       if (err) {
         return res.status(500).json({
           status: false,
           message: 'Server Error',
         });
-      } else {
-        return res.status(200).json({
-          status: true,
-          message: 'Update Success..!',
+      }
+      if (rows.length === 0) {
+        return res.status(404).json({
+          status: false,
+          message: 'Not Found',
         });
       }
+      const namaFileLama = rows[0].gambar;
+
+      // Hapus file lama jika ada
+      if (namaFileLama && gambar) {
+        const pathFileLama = path.join(__dirname, '../public/images', namaFileLama);
+        fs.unlinkSync(pathFileLama);
+      }
+
+      let Data = {
+        nama: req.body.nama,
+        nrp: req.body.nrp,
+        id_jurusan: req.body.id_jurusan,
+        gambar: gambar,
+      };
+      connection.query(`update mahasiswa set ? where id_m = ${id}`, Data, function (err, rows) {
+        if (err) {
+          return res.status(500).json({
+            status: false,
+            message: 'Server Error',
+          });
+        } else {
+          return res.status(200).json({
+            status: true,
+            message: 'Update Success..!',
+          });
+        }
+      });
     });
-  });
-});
+  }
+);
 
 router.delete('/delete/(:id)', function (req, res) {
   let id = req.params.id;
