@@ -6,6 +6,10 @@ const { body, validationResult } = require('express-validator');
 const connection = require('../config/db');
 const fs = require('fs');
 
+const cors = rquire('cors');
+//membuat route baru dengan method Get yang isinya
+app.use(cors());
+
 const multer = require('multer');
 const path = require('path');
 
