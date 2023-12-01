@@ -1,115 +1,119 @@
 const express = require('express');
 const router = express.Router();
+const authenticateToken = require('../routes/auth/midleware/authenticateToken');
 const { body, validationResult } = require('express-validator');
+
 const connection = require('../config/db');
 
-router.get('/', function (req, res) {
+router.get('/', authenticateToken, function (req, res) {
   connection.query('SELECT * from jurusan', function (err, rows) {
     if (err) {
+      console.error(err);
       return res.status(500).json({
         status: false,
-        message: 'Server Failed',
-        error: err,
+        message: 'Server Error',
       });
     } else {
       return res.status(200).json({
         status: true,
-        message: 'Data jurusan ada',
+        message: 'Data Mahasiswa',
         data: rows,
       });
     }
   });
 });
 
-router.post('/store', [body('nama_jurusan').notEmpty()], (req, res) => {
-  const error = validationResult(req);
-  if (!error.isEmpty()) {
-    return res.status(422).json({
-      error: error.array(),
-    });
-  }
-  let data = {
-    nama_jurusan: req.body.nama_jurusan,
-  };
-
-  connection.query('INSERT INTO jurusan SET ?', data, function (err, rows) {
-    if (err) {
-      return res.status(500).json({
-        status: false,
-        message: 'Server error',
-      });
-    } else {
-      return res.status(201).json({
-        status: true,
-        message: 'Success',
-        data: rows[0],
+router.post('/store', authenticateToken, [
+  body('nama_jurusan').notEmpty(),
+  (req, res) => {
+    const error = validationResult(req);
+    if (!error.isEmpty()) {
+      return res.status(422).json({
+        error: error.array(),
       });
     }
-  });
-});
+    let Data = {
+      nama_jurusan: req.body.nama_jurusan,
+    };
+    connection.query('INSERT into jurusan set ? ', Data, function (err, rows) {
+      if (err) {
+        return res.status(500).json({
+          status: false,
+          message: 'Server Error',
+        });
+      } else {
+        return res.status(201).json({
+          status: true,
+          message: 'Sukses..!',
+          data: rows[0],
+        });
+      }
+    });
+  },
+]);
 
-router.get('/(:id)', function (req, res) {
-  let id = req.params.id;
-  connection.query(`select * from jurusan where id_j = ${id}`, function (err, rows) {
+router.get('/(:id_j)', authenticateToken, function (req, res) {
+  let id_j = req.params.id_j;
+  connection.query(`SELECT * From jurusan where id_j = ${id_j}`, function (err, rows) {
     if (err) {
       return res.status(500).json({
         status: false,
-        message: 'server error',
+        message: 'Server Error',
       });
     }
     if (rows.length <= 0) {
-      return res.status(400).json({
+      return res.status(404).json({
         status: false,
-        message: 'not found',
+        message: 'Not Found',
       });
     } else {
       return res.status(200).json({
         status: true,
-        message: 'data jurusan ada',
+        message: 'Data Jurusan',
         data: rows[0],
       });
     }
   });
 });
 
-router.patch('/update/:id', [body('nama_jurusan').notEmpty()], (req, res) => {
+router.patch('/update/(:id_j)', authenticateToken, [body('nama_jurusan').notEmpty()], (req, res) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
     return res.status(422).json({
       error: error.array(),
     });
   }
-  let id = req.params.id;
-  let data = {
+  let id_j = req.params.id_j;
+  let Data = {
     nama_jurusan: req.body.nama_jurusan,
   };
-  connection.query(`update jurusan set ? where id_j = ${id}`, data, function (err, rows) {
+  connection.query(`UPDATE jurusan set ? where id_j = ${id_j}`, Data, function (err, rows) {
     if (err) {
       return res.status(500).json({
         status: false,
-        message: 'server error',
+        message: 'Server Error',
       });
     } else {
       return res.status(200).json({
         status: true,
-        message: 'update berhasil......',
+        message: 'Update Sukses..!',
       });
     }
   });
 });
 
-router.delete('/delete/(:id)', function (req, res) {
-  let id = req.params.id;
-  connection.query(`delete from jurusan where id_j = ${id}`, function (err, rows) {
+router.delete('/delete/(:id_j)', authenticateToken, function (req, res) {
+  let id_j = req.params.id_j;
+  connection.query(`DELETE From jurusan where id_j = ${id_j}`, function (err, rows) {
     if (err) {
-      return req.status(500).json({
+      return res.status(500).json({
         status: false,
-        message: 'server error',
+        message: 'Server Error',
       });
     } else {
       return res.status(200).json({
         status: true,
-        message: 'data berhasil dihapus',
+        message: 'Data has ben delete..!!',
       });
     }
   });

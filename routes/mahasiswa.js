@@ -2,10 +2,9 @@ const express = require('express');
 const router = express.Router();
 //import express validator
 const { body, validationResult } = require('express-validator');
-//import database
+// import database
 const connection = require('../config/db');
 const fs = require('fs');
-
 const multer = require('multer');
 const path = require('path');
 
@@ -18,18 +17,42 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + path.extname(file.originalname));
   },
 });
+
 const fileFilter = (req, file, cb) => {
   // Mengecek jenis file yang diizinkan (misalnya, hanya gambar JPEG atau PNG)
-  if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png' || file.mimetype === 'application/pdf') {
+  if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
     cb(null, true); // Izinkan file
+  } else if (file.mimetype === 'application/pdf') {
+    cb(null, true); // Izinkan file PDF
   } else {
     cb(new Error('Jenis file tidak diizinkan'), false); // Tolak file
   }
 };
+
 const upload = multer({ storage: storage, fileFilter: fileFilter });
+
+const authenticateToken = require('../routes/auth/midleware/authenticateToken');
+
+router.get('/', authenticateToken, function (req, res) {
+  connection.query('select a.id_m id, a.nama, b.nama_jurusan as jurusan, a.id_jurusan, a.gambar, a.swa_foto, a.nrp ' + ' from mahasiswa a join jurusan b ' + ' on b.id_j=a.id_jurusan order by a.id_m desc ', function (err, rows) {
+    if (err) {
+      return res.status(500).json({
+        status: false,
+        message: 'Server Failed',
+      });
+    } else {
+      return res.status(200).json({
+        status: true,
+        message: 'Data Mahasiswa',
+        data: rows,
+      });
+    }
+  });
+});
 
 router.post(
   '/store',
+  authenticateToken,
   upload.fields([
     { name: 'gambar', maxCount: 1 },
     { name: 'swa_foto', maxCount: 1 },
@@ -71,23 +94,6 @@ router.post(
   }
 );
 
-router.get('/', function (req, res) {
-  connection.query('SELECT mahasiswa.* FROM mahasiswa JOIN jurusan ON mahasiswa.id_jurusan = jurusan.id_j ORDER BY mahasiswa.id_m DESC', function (err, rows) {
-    if (err) {
-      return res.status(500).json({
-        status: false,
-        message: 'Server Failed',
-      });
-    } else {
-      return res.status(200).json({
-        status: true,
-        message: 'Data Mahasiswa',
-        data: rows,
-      });
-    }
-  });
-});
-
 router.get('/(:id)', function (req, res) {
   let id = req.params.id;
   connection.query(`select * from mahasiswa where id_m = ${id}`, function (err, rows) {
@@ -114,6 +120,7 @@ router.get('/(:id)', function (req, res) {
 
 router.patch(
   '/update/:id',
+  authenticateToken,
   upload.fields([
     { name: 'gambar', maxCount: 1 },
     { name: 'swa_foto', maxCount: 1 },
@@ -130,6 +137,7 @@ router.patch(
     // Lakukan pengecekan apakah ada file yang diunggah
     let gambar = req.files['gambar'] ? req.files['gambar'][0].filename : null;
     let swa_foto = req.files['swa_foto'] ? req.files['swa_foto'][0].filename : null;
+
     connection.query(`select * from mahasiswa where id_m = ${id}`, function (err, rows) {
       if (err) {
         return res.status(500).json({
@@ -143,6 +151,7 @@ router.patch(
           message: 'Not Found',
         });
       }
+
       const gambarLama = rows[0].gambar;
       const swa_fotoLama = rows[0].swa_foto;
 
@@ -169,6 +178,7 @@ router.patch(
       if (swa_foto) {
         Data.swa_foto = swa_foto;
       }
+
       connection.query(`update mahasiswa set ? where id_m = ${id}`, Data, function (err, rows) {
         if (err) {
           return res.status(500).json({
@@ -186,7 +196,7 @@ router.patch(
   }
 );
 
-router.delete('/delete/(:id)', function (req, res) {
+router.delete('/delete/(:id)', authenticateToken, function (req, res) {
   let id = req.params.id;
 
   connection.query(`select * from mahasiswa where id_m = ${id}`, function (err, rows) {
@@ -202,11 +212,16 @@ router.delete('/delete/(:id)', function (req, res) {
         message: 'Not Found',
       });
     }
-    const namaFileLama = rows[0].gambar;
+    const gambarLama = rows[0].gambar;
+    const swa_fotoLama = rows[0].swa_foto;
 
     // Hapus file lama jika ada
-    if (namaFileLama) {
-      const pathFileLama = path.join(__dirname, '../public/images', namaFileLama);
+    if (gambarLama) {
+      const pathFileLama = path.join(__dirname, '../public/images', gambarLama);
+      fs.unlinkSync(pathFileLama);
+    }
+    if (swa_fotoLama) {
+      const pathFileLama = path.join(__dirname, '../public/images', swa_fotoLama);
       fs.unlinkSync(pathFileLama);
     }
 
